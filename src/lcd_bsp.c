@@ -10,6 +10,7 @@ static SemaphoreHandle_t lvgl_mux = NULL; //mutex semaphores
 #define LCD_HOST    SPI2_HOST
 static const char *TAG = "lcd_bsp";
 #define DBG_PRINTF(...) do { printf(__VA_ARGS__); fflush(stdout); } while (0)
+static volatile bool s_lvgl_flush_ready_enabled = false;
 
 #define SH8601_ID 0x86
 #define CO5300_ID 0xff
@@ -255,6 +256,7 @@ void lcd_lvgl_Init(void)
   static lv_disp_draw_buf_t disp_buf; // contains internal graphic buffer(s) called draw buffer(s)
   static lv_disp_drv_t disp_drv;      // contains callback functions
 
+  s_lvgl_flush_ready_enabled = false;
   DBG_PRINTF("[DBG] lcd_lvgl_Init: enter\r\n");
   ESP_LOGI(TAG, "LCD config: mode=%s color_order=%s pclk=%dMHz flush=%s qspi_cmd=%s",
            LCD_USE_QSPI ? "QSPI" : "SPI",
@@ -351,6 +353,7 @@ void lcd_lvgl_Init(void)
   disp_drv.draw_buf = &disp_buf;
   disp_drv.user_data = panel_handle;
   lv_disp_t *disp = lv_disp_drv_register(&disp_drv);
+  s_lvgl_flush_ready_enabled = true;
   DBG_PRINTF("[DBG] lcd_lvgl_Init: lvgl display driver registered\r\n");
 
   static lv_indev_drv_t indev_drv;    // Input device driver (Touch)
@@ -436,7 +439,13 @@ static bool example_notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, 
   (void)panel_io;
   (void)edata;
 #if LCD_LVGL_ASYNC_FLUSH
+  if (!s_lvgl_flush_ready_enabled || user_ctx == NULL) {
+    return false;
+  }
   lv_disp_drv_t *disp_driver = (lv_disp_drv_t *)user_ctx;
+  if (disp_driver->draw_buf == NULL) {
+    return false;
+  }
   lv_disp_flush_ready(disp_driver);
 #else
   (void)user_ctx;
