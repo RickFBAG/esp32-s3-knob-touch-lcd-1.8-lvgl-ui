@@ -31,6 +31,10 @@
 #define LCD_QSPI_OCTAL_MODE 0
 #endif
 
+#ifndef LCD_QSPI_CMD_BITS_8
+#define LCD_QSPI_CMD_BITS_8 0
+#endif
+
 #if LCD_QSPI_PCLK_10MHZ
 #define SH8601_PANEL_PCLK_HZ (10 * 1000 * 1000)
 #else
@@ -131,7 +135,7 @@ esp_err_t esp_lcd_new_panel_sh8601(const esp_lcd_panel_io_handle_t io, const esp
         .trans_queue_depth = 10,                                \
         .on_color_trans_done = cb,                              \
         .user_ctx = cb_ctx,                                     \
-        .lcd_cmd_bits = 32,                                     \
+        .lcd_cmd_bits = LCD_QSPI_CMD_BITS_8 ? 8 : 32,           \
         .lcd_param_bits = 8,                                    \
         .flags = {                                              \
             .quad_mode = !LCD_QSPI_OCTAL_MODE,                  \
@@ -147,7 +151,7 @@ esp_err_t esp_lcd_new_panel_sh8601(const esp_lcd_panel_io_handle_t io, const esp
         .trans_queue_depth = 10,                                \
         .on_color_trans_done = cb,                              \
         .user_ctx = cb_ctx,                                     \
-        .lcd_cmd_bits = 32,                                     \
+        .lcd_cmd_bits = LCD_QSPI_CMD_BITS_8 ? 8 : 32,           \
         .lcd_param_bits = 8,                                    \
         .flags = {                                              \
             .octal_mode = LCD_QSPI_OCTAL_MODE,                  \
