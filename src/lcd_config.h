@@ -56,6 +56,10 @@
 #define LCD_RUN_PANEL_SOLID_COLOR_TEST    1   // 1: run color bars before LVGL demo
 #endif
 
+#ifndef LCD_PANEL_TEST_COLOR_HOLD_MS
+#define LCD_PANEL_TEST_COLOR_HOLD_MS      1000
+#endif
+
 #ifndef LCD_START_LV_DEMO_WIDGETS
 #define LCD_START_LV_DEMO_WIDGETS         1   // 1: start lv_demo_widgets() after panel test
 #endif
