@@ -246,6 +246,12 @@ static void panel_known_good_render_test(esp_lcd_panel_handle_t panel_handle)
     vTaskDelay(pdMS_TO_TICKS(LCD_PANEL_TEST_COLOR_HOLD_MS));
   }
   DBG_PRINTF("[DBG] panel: solid color test done\r\n");
+
+#if !LCD_START_LV_DEMO_WIDGETS
+  // Keep a visible end-state when demo is disabled.
+  DBG_PRINTF("[DBG] panel: hold WHITE (demo disabled)\r\n");
+  panel_fill_solid_color(panel_handle, 0xFFFF);
+#endif
 #else
   (void)panel_handle;
 #endif
