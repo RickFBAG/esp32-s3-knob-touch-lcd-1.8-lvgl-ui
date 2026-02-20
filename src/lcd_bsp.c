@@ -267,12 +267,13 @@ void lcd_lvgl_Init(void)
 
   s_lvgl_flush_ready_enabled = false;
   DBG_PRINTF("[DBG] lcd_lvgl_Init: enter\r\n");
-  ESP_LOGI(TAG, "LCD config: mode=%s color_order=%s pclk=%dMHz flush=%s qspi_cmd=%s init=%s",
+  ESP_LOGI(TAG, "LCD config: mode=%s color_order=%s pclk=%dMHz flush=%s qspi_cmd=%s qspi_octal=%d init=%s",
            LCD_USE_QSPI ? "QSPI" : "SPI",
            LCD_COLOR_ORDER_BGR ? "BGR" : "RGB",
            LCD_QSPI_PCLK_10MHZ ? 10 : 20,
            LCD_LVGL_ASYNC_FLUSH ? "ASYNC_CB" : "SYNC",
            LCD_QSPI_CMD_PACKING_ALT ? "ALT" : "DEFAULT",
+           LCD_QSPI_OCTAL_MODE ? 1 : 0,
            LCD_USE_CUSTOM_INIT_CMDS ? "CUSTOM" : "DRIVER_DEFAULT");
 
   const spi_bus_config_t buscfg =

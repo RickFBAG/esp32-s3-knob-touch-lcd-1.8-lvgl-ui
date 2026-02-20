@@ -52,6 +52,10 @@
 #define LCD_QSPI_CMD_PACKING_ALT          0   // 0: opcode<<24|cmd<<8, 1: opcode<<8|cmd
 #endif
 
+#ifndef LCD_QSPI_OCTAL_MODE
+#define LCD_QSPI_OCTAL_MODE               0   // 0: disabled, 1: enabled (IDF panel-io multi-line mode flag)
+#endif
+
 #ifndef LCD_USE_CUSTOM_INIT_CMDS
 #define LCD_USE_CUSTOM_INIT_CMDS          1   // 1: use project init table, 0: use driver default init
 #endif
