@@ -221,8 +221,8 @@ void lcd_lvgl_Init(void)
   esp_lcd_panel_io_handle_t io_handle = NULL;
 
   const esp_lcd_panel_io_spi_config_t io_config = SH8601_PANEL_IO_QSPI_CONFIG(EXAMPLE_PIN_NUM_LCD_CS,
-                                                                              example_notify_lvgl_flush_ready,
-                                                                              &disp_drv);
+                                                                              NULL,
+                                                                              NULL);
 
   sh8601_vendor_config_t vendor_config = 
   {
@@ -352,6 +352,7 @@ static void example_lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_
   const int offsety2 = area->y2;
 
   esp_lcd_panel_draw_bitmap(panel_handle, offsetx1, offsety1, offsetx2 + 1, offsety2 + 1, color_map);
+  lv_disp_flush_ready(drv);
 }
 void example_lvgl_rounder_cb(struct _lv_disp_drv_t *disp_drv, lv_area_t *area)
 {
