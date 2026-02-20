@@ -19,6 +19,18 @@
 
 #include "esp_lcd_sh8601.h"
 
+#if __has_include("esp_idf_version.h")
+#include "esp_idf_version.h"
+#endif
+
+#ifndef ESP_IDF_VERSION_VAL
+#define ESP_IDF_VERSION_VAL(major, minor, patch) ((major) * 10000 + (minor) * 100 + (patch))
+#endif
+
+#ifndef ESP_IDF_VERSION
+#define ESP_IDF_VERSION ESP_IDF_VERSION_VAL(4, 4, 0)
+#endif
+
 #define LCD_OPCODE_WRITE_CMD        (0x02ULL)
 #define LCD_OPCODE_READ_CMD         (0x03ULL)
 #define LCD_OPCODE_WRITE_COLOR      (0x32ULL)
@@ -33,7 +45,7 @@ static esp_err_t panel_sh8601_invert_color(esp_lcd_panel_t *panel, bool invert_c
 static esp_err_t panel_sh8601_mirror(esp_lcd_panel_t *panel, bool mirror_x, bool mirror_y);
 static esp_err_t panel_sh8601_swap_xy(esp_lcd_panel_t *panel, bool swap_axes);
 static esp_err_t panel_sh8601_set_gap(esp_lcd_panel_t *panel, int x_gap, int y_gap);
-static esp_err_t panel_sh8601_disp_on_off(esp_lcd_panel_t *panel, bool off);
+static esp_err_t panel_sh8601_disp_on_off(esp_lcd_panel_t *panel, bool enable_or_off);
 
 typedef struct {
     esp_lcd_panel_t base;
@@ -69,6 +81,7 @@ esp_err_t esp_lcd_new_panel_sh8601(const esp_lcd_panel_io_handle_t io, const esp
         ESP_GOTO_ON_ERROR(gpio_config(&io_conf), err, TAG, "configure GPIO for RST line failed");
     }
 
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
     switch (panel_dev_config->rgb_ele_order) {
     case LCD_RGB_ELEMENT_ORDER_RGB:
         sh8601->madctl_val = 0;
@@ -80,6 +93,19 @@ esp_err_t esp_lcd_new_panel_sh8601(const esp_lcd_panel_io_handle_t io, const esp
         ESP_GOTO_ON_FALSE(false, ESP_ERR_NOT_SUPPORTED, err, TAG, "unsupported color element order");
         break;
     }
+#else
+    switch (panel_dev_config->color_space) {
+    case ESP_LCD_COLOR_SPACE_RGB:
+        sh8601->madctl_val = 0;
+        break;
+    case ESP_LCD_COLOR_SPACE_BGR:
+        sh8601->madctl_val |= LCD_CMD_BGR_BIT;
+        break;
+    default:
+        ESP_GOTO_ON_FALSE(false, ESP_ERR_NOT_SUPPORTED, err, TAG, "unsupported color space");
+        break;
+    }
+#endif
 
     uint8_t fb_bits_per_pixel = 0;
     switch (panel_dev_config->bits_per_pixel) {
@@ -119,7 +145,11 @@ esp_err_t esp_lcd_new_panel_sh8601(const esp_lcd_panel_io_handle_t io, const esp
     sh8601->base.set_gap = panel_sh8601_set_gap;
     sh8601->base.mirror = panel_sh8601_mirror;
     sh8601->base.swap_xy = panel_sh8601_swap_xy;
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
     sh8601->base.disp_on_off = panel_sh8601_disp_on_off;
+#else
+    sh8601->base.disp_off = panel_sh8601_disp_on_off;
+#endif
     *ret_panel = &(sh8601->base);
     ESP_LOGD(TAG, "new sh8601 panel @%p", sh8601);
 
@@ -330,17 +360,25 @@ static esp_err_t panel_sh8601_set_gap(esp_lcd_panel_t *panel, int x_gap, int y_g
     return ESP_OK;
 }
 
-static esp_err_t panel_sh8601_disp_on_off(esp_lcd_panel_t *panel, bool on_off)
+static esp_err_t panel_sh8601_disp_on_off(esp_lcd_panel_t *panel, bool enable_or_off)
 {
     sh8601_panel_t *sh8601 = __containerof(panel, sh8601_panel_t, base);
     esp_lcd_panel_io_handle_t io = sh8601->io;
     int command = 0;
 
-    if (on_off) {
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
+    if (enable_or_off) {
         command = LCD_CMD_DISPON;
     } else {
         command = LCD_CMD_DISPOFF;
     }
+#else
+    if (!enable_or_off) {
+        command = LCD_CMD_DISPON;
+    } else {
+        command = LCD_CMD_DISPOFF;
+    }
+#endif
     ESP_RETURN_ON_ERROR(tx_param(sh8601, io, command, NULL, 0), TAG, "send command failed");
     return ESP_OK;
 }

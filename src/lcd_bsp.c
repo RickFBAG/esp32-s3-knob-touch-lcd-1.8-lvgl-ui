@@ -2,6 +2,7 @@
 #include "esp_lcd_sh8601.h"
 #include "lcd_config.h"
 #include "cst816.h"
+#include "esp_idf_version.h"
 static SemaphoreHandle_t lvgl_mux = NULL; //mutex semaphores
 #define LCD_HOST    SPI2_HOST
 
@@ -220,8 +221,8 @@ void lcd_lvgl_Init(void)
   esp_lcd_panel_io_handle_t io_handle = NULL;
 
   const esp_lcd_panel_io_spi_config_t io_config = SH8601_PANEL_IO_QSPI_CONFIG(EXAMPLE_PIN_NUM_LCD_CS,
-                                                                              example_notify_lvgl_flush_ready,
-                                                                              &disp_drv);
+                                                                              NULL,
+                                                                              NULL);
 
   sh8601_vendor_config_t vendor_config = 
   {
@@ -238,7 +239,11 @@ void lcd_lvgl_Init(void)
   const esp_lcd_panel_dev_config_t panel_config = 
   {
     .reset_gpio_num = EXAMPLE_PIN_NUM_LCD_RST,
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
     .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB,
+#else
+    .color_space = ESP_LCD_COLOR_SPACE_RGB,
+#endif
     .bits_per_pixel = LCD_BIT_PER_PIXEL,
     .vendor_config = &vendor_config,
   };
@@ -347,6 +352,7 @@ static void example_lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_
   const int offsety2 = area->y2;
 
   esp_lcd_panel_draw_bitmap(panel_handle, offsetx1, offsety1, offsetx2 + 1, offsety2 + 1, color_map);
+  lv_disp_flush_ready(drv);
 }
 void example_lvgl_rounder_cb(struct _lv_disp_drv_t *disp_drv, lv_area_t *area)
 {

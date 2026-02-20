@@ -10,6 +10,18 @@
 
 #include "esp_lcd_panel_vendor.h"
 
+#if __has_include("esp_idf_version.h")
+#include "esp_idf_version.h"
+#endif
+
+#ifndef ESP_IDF_VERSION_VAL
+#define ESP_IDF_VERSION_VAL(major, minor, patch) ((major) * 10000 + (minor) * 100 + (patch))
+#endif
+
+#ifndef ESP_IDF_VERSION
+#define ESP_IDF_VERSION ESP_IDF_VERSION_VAL(4, 4, 0)
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -87,19 +99,20 @@ esp_err_t esp_lcd_new_panel_sh8601(const esp_lcd_panel_io_handle_t io, const esp
         .cs_gpio_num = cs,                                      \
         .dc_gpio_num = dc,                                      \
         .spi_mode = 0,                                          \
-        .pclk_hz = 40 * 1000 * 1000,                            \
+        .pclk_hz = 20 * 1000 * 1000,                            \
         .trans_queue_depth = 10,                                \
         .on_color_trans_done = cb,                              \
         .user_ctx = cb_ctx,                                     \
         .lcd_cmd_bits = 8,                                      \
         .lcd_param_bits = 8,                                    \
     }
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
 #define SH8601_PANEL_IO_QSPI_CONFIG(cs, cb, cb_ctx)             \
     {                                                           \
         .cs_gpio_num = cs,                                      \
         .dc_gpio_num = -1,                                      \
         .spi_mode = 0,                                          \
-        .pclk_hz = 40 * 1000 * 1000,                            \
+        .pclk_hz = 20 * 1000 * 1000,                            \
         .trans_queue_depth = 10,                                \
         .on_color_trans_done = cb,                              \
         .user_ctx = cb_ctx,                                     \
@@ -109,6 +122,23 @@ esp_err_t esp_lcd_new_panel_sh8601(const esp_lcd_panel_io_handle_t io, const esp
             .quad_mode = true,                                  \
         },                                                      \
     }
+#else
+#define SH8601_PANEL_IO_QSPI_CONFIG(cs, cb, cb_ctx)             \
+    {                                                           \
+        .cs_gpio_num = cs,                                      \
+        .dc_gpio_num = -1,                                      \
+        .spi_mode = 0,                                          \
+        .pclk_hz = 20 * 1000 * 1000,                            \
+        .trans_queue_depth = 10,                                \
+        .on_color_trans_done = cb,                              \
+        .user_ctx = cb_ctx,                                     \
+        .lcd_cmd_bits = 32,                                     \
+        .lcd_param_bits = 8,                                    \
+        .flags = {                                              \
+            .octal_mode = false,                                \
+        },                                                      \
+    }
+#endif
 
 #ifdef __cplusplus
 }
