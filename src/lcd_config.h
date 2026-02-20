@@ -44,6 +44,10 @@
 #define LCD_QSPI_PCLK_10MHZ               0   // 0: 20MHz, 1: 10MHz
 #endif
 
+#ifndef LCD_QSPI_PCLK_40MHZ
+#define LCD_QSPI_PCLK_40MHZ               0   // 1: force 40MHz (ExampleData baseline)
+#endif
+
 #ifndef LCD_LVGL_ASYNC_FLUSH
 #define LCD_LVGL_ASYNC_FLUSH              0   // 0: sync flush_ready, 1: callback flush_ready
 #endif
@@ -74,5 +78,9 @@
 
 #ifndef LCD_START_LV_DEMO_WIDGETS
 #define LCD_START_LV_DEMO_WIDGETS         1   // 1: start lv_demo_widgets() after panel test
+#endif
+
+#ifndef LCD_EXPLICIT_DISP_ON
+#define LCD_EXPLICIT_DISP_ON              0   // 0: skip explicit disp_on_off(true), 1: call it
 #endif
 #endif

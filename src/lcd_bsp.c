@@ -270,7 +270,7 @@ void lcd_lvgl_Init(void)
   ESP_LOGI(TAG, "LCD config: mode=%s color_order=%s pclk=%dMHz flush=%s qspi_cmd=%s qspi_cmd_bits=%d qspi_octal=%d init=%s",
            LCD_USE_QSPI ? "QSPI" : "SPI",
            LCD_COLOR_ORDER_BGR ? "BGR" : "RGB",
-           LCD_QSPI_PCLK_10MHZ ? 10 : 20,
+           LCD_QSPI_PCLK_40MHZ ? 40 : (LCD_QSPI_PCLK_10MHZ ? 10 : 20),
            LCD_LVGL_ASYNC_FLUSH ? "ASYNC_CB" : "SYNC",
            LCD_QSPI_CMD_PACKING_ALT ? "ALT" : "DEFAULT",
            LCD_QSPI_CMD_BITS_8 ? 8 : 32,
@@ -346,8 +346,12 @@ void lcd_lvgl_Init(void)
   DBG_PRINTF("[DBG] lcd_lvgl_Init: panel reset done\r\n");
   ESP_ERROR_CHECK_WITHOUT_ABORT(esp_lcd_panel_init(panel_handle));
   DBG_PRINTF("[DBG] lcd_lvgl_Init: panel init done\r\n");
+#if LCD_EXPLICIT_DISP_ON
   ESP_ERROR_CHECK_WITHOUT_ABORT(esp_lcd_panel_disp_on_off(panel_handle, true));
   DBG_PRINTF("[DBG] lcd_lvgl_Init: panel display ON\r\n");
+#else
+  DBG_PRINTF("[DBG] lcd_lvgl_Init: panel display ON skipped (LCD_EXPLICIT_DISP_ON=0)\r\n");
+#endif
   panel_known_good_render_test(panel_handle);
   DBG_PRINTF("[DBG] lcd_lvgl_Init: panel color test returned\r\n");
 
