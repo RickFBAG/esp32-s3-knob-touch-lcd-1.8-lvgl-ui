@@ -64,6 +64,10 @@
 #define LCD_QSPI_CMD_BITS_8               0   // 0: 32-bit cmd framing, 1: 8-bit cmd framing
 #endif
 
+#ifndef LCD_DC_AS_CMD_PHASE
+#define LCD_DC_AS_CMD_PHASE               0   // 1: force dc_as_cmd_phase in panel IO flags
+#endif
+
 #ifndef LCD_USE_CUSTOM_INIT_CMDS
 #define LCD_USE_CUSTOM_INIT_CMDS          1   // 1: use project init table, 0: use driver default init
 #endif

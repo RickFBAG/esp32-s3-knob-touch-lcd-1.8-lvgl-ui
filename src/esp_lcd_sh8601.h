@@ -126,6 +126,9 @@ esp_err_t esp_lcd_new_panel_sh8601(const esp_lcd_panel_io_handle_t io, const esp
         .user_ctx = cb_ctx,                                     \
         .lcd_cmd_bits = 8,                                      \
         .lcd_param_bits = 8,                                    \
+        .flags = {                                              \
+            .dc_as_cmd_phase = LCD_DC_AS_CMD_PHASE,             \
+        },                                                      \
     }
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
 #define SH8601_PANEL_IO_QSPI_CONFIG(cs, cb, cb_ctx)             \
@@ -140,6 +143,7 @@ esp_err_t esp_lcd_new_panel_sh8601(const esp_lcd_panel_io_handle_t io, const esp
         .lcd_cmd_bits = LCD_QSPI_CMD_BITS_8 ? 8 : 32,           \
         .lcd_param_bits = 8,                                    \
         .flags = {                                              \
+            .dc_as_cmd_phase = LCD_DC_AS_CMD_PHASE,             \
             .quad_mode = !LCD_QSPI_OCTAL_MODE,                  \
         },                                                      \
     }
@@ -156,6 +160,7 @@ esp_err_t esp_lcd_new_panel_sh8601(const esp_lcd_panel_io_handle_t io, const esp
         .lcd_cmd_bits = LCD_QSPI_CMD_BITS_8 ? 8 : 32,           \
         .lcd_param_bits = 8,                                    \
         .flags = {                                              \
+            .dc_as_cmd_phase = LCD_DC_AS_CMD_PHASE,             \
             .octal_mode = LCD_QSPI_OCTAL_MODE,                  \
         },                                                      \
     }
