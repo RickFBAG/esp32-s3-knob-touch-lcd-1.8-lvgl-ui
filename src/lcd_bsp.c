@@ -9,7 +9,11 @@
 static SemaphoreHandle_t lvgl_mux = NULL; //mutex semaphores
 #define LCD_HOST    SPI2_HOST
 static const char *TAG = "lcd_bsp";
+#if LCD_DEBUG_LOGS
 #define DBG_PRINTF(...) do { printf(__VA_ARGS__); fflush(stdout); } while (0)
+#else
+#define DBG_PRINTF(...) do { } while (0)
+#endif
 static volatile bool s_lvgl_flush_ready_enabled = false;
 
 #define SH8601_ID 0x86

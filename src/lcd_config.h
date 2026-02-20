@@ -87,4 +87,8 @@
 #ifndef LCD_EXPLICIT_DISP_ON
 #define LCD_EXPLICIT_DISP_ON              0   // 0: skip explicit disp_on_off(true), 1: call it
 #endif
+
+#ifndef LCD_DEBUG_LOGS
+#define LCD_DEBUG_LOGS                    0   // 1: enable verbose [DBG] logs
+#endif
 #endif
