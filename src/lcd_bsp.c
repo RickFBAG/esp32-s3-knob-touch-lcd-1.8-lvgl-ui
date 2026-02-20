@@ -3,8 +3,11 @@
 #include "lcd_config.h"
 #include "cst816.h"
 #include "esp_idf_version.h"
+#include "esp_heap_caps.h"
+#include "esp_log.h"
 static SemaphoreHandle_t lvgl_mux = NULL; //mutex semaphores
 #define LCD_HOST    SPI2_HOST
+static const char *TAG = "lcd_bsp";
 
 #define SH8601_ID 0x86
 #define CO5300_ID 0xff
@@ -206,23 +209,91 @@ static const sh8601_lcd_init_cmd_t lcd_init_cmds[] =
 #endif
 };
 
+static void panel_fill_solid_color(esp_lcd_panel_handle_t panel_handle, uint16_t color565)
+{
+  uint16_t *line_buf = heap_caps_malloc(EXAMPLE_LCD_H_RES * sizeof(uint16_t), MALLOC_CAP_DMA);
+  if (!line_buf) {
+    ESP_LOGE(TAG, "Failed to allocate panel test line buffer");
+    return;
+  }
+
+  for (int x = 0; x < EXAMPLE_LCD_H_RES; x++) {
+    line_buf[x] = color565;
+  }
+
+  for (int y = 0; y < EXAMPLE_LCD_V_RES; y++) {
+    esp_lcd_panel_draw_bitmap(panel_handle, 0, y, EXAMPLE_LCD_H_RES, y + 1, line_buf);
+  }
+
+  heap_caps_free(line_buf);
+}
+
+static void panel_known_good_render_test(esp_lcd_panel_handle_t panel_handle)
+{
+#if LCD_RUN_PANEL_SOLID_COLOR_TEST
+  static const uint16_t colors[] = {0xF800, 0x07E0, 0x001F, 0xFFFF, 0x0000};
+  static const char *names[] = {"RED", "GREEN", "BLUE", "WHITE", "BLACK"};
+  const int count = sizeof(colors) / sizeof(colors[0]);
+
+  for (int i = 0; i < count; i++) {
+    ESP_LOGI(TAG, "Panel solid test color: %s", names[i]);
+    panel_fill_solid_color(panel_handle, colors[i]);
+    vTaskDelay(pdMS_TO_TICKS(250));
+  }
+#else
+  (void)panel_handle;
+#endif
+}
+
 void lcd_lvgl_Init(void)
 {
   static lv_disp_draw_buf_t disp_buf; // contains internal graphic buffer(s) called draw buffer(s)
   static lv_disp_drv_t disp_drv;      // contains callback functions
 
-  const spi_bus_config_t buscfg = SH8601_PANEL_BUS_QSPI_CONFIG(EXAMPLE_PIN_NUM_LCD_PCLK,
-                                                               EXAMPLE_PIN_NUM_LCD_DATA0,
-                                                               EXAMPLE_PIN_NUM_LCD_DATA1,
-                                                               EXAMPLE_PIN_NUM_LCD_DATA2,
-                                                               EXAMPLE_PIN_NUM_LCD_DATA3,
-                                                               EXAMPLE_LCD_H_RES * EXAMPLE_LCD_V_RES * LCD_BIT_PER_PIXEL / 8);
+  ESP_LOGI(TAG, "LCD config: mode=%s color_order=%s pclk=%dMHz flush=%s qspi_cmd=%s",
+           LCD_USE_QSPI ? "QSPI" : "SPI",
+           LCD_COLOR_ORDER_BGR ? "BGR" : "RGB",
+           LCD_QSPI_PCLK_10MHZ ? 10 : 20,
+           LCD_LVGL_ASYNC_FLUSH ? "ASYNC_CB" : "SYNC",
+           LCD_QSPI_CMD_PACKING_ALT ? "ALT" : "DEFAULT");
+
+  const spi_bus_config_t buscfg =
+#if LCD_USE_QSPI
+      SH8601_PANEL_BUS_QSPI_CONFIG(EXAMPLE_PIN_NUM_LCD_PCLK,
+                                   EXAMPLE_PIN_NUM_LCD_DATA0,
+                                   EXAMPLE_PIN_NUM_LCD_DATA1,
+                                   EXAMPLE_PIN_NUM_LCD_DATA2,
+                                   EXAMPLE_PIN_NUM_LCD_DATA3,
+                                   EXAMPLE_LCD_H_RES * EXAMPLE_LCD_V_RES * LCD_BIT_PER_PIXEL / 8);
+#else
+      SH8601_PANEL_BUS_SPI_CONFIG(EXAMPLE_PIN_NUM_LCD_PCLK,
+                                  EXAMPLE_PIN_NUM_LCD_DATA0,
+                                  EXAMPLE_LCD_H_RES * EXAMPLE_LCD_V_RES * LCD_BIT_PER_PIXEL / 8);
+#endif
   ESP_ERROR_CHECK_WITHOUT_ABORT(spi_bus_initialize(LCD_HOST, &buscfg, SPI_DMA_CH_AUTO));
   esp_lcd_panel_io_handle_t io_handle = NULL;
 
-  const esp_lcd_panel_io_spi_config_t io_config = SH8601_PANEL_IO_QSPI_CONFIG(EXAMPLE_PIN_NUM_LCD_CS,
-                                                                              NULL,
-                                                                              NULL);
+  const esp_lcd_panel_io_spi_config_t io_config =
+#if LCD_USE_QSPI
+      SH8601_PANEL_IO_QSPI_CONFIG(EXAMPLE_PIN_NUM_LCD_CS,
+#if LCD_LVGL_ASYNC_FLUSH
+                                  example_notify_lvgl_flush_ready,
+                                  &disp_drv);
+#else
+                                  NULL,
+                                  NULL);
+#endif
+#else
+      SH8601_PANEL_IO_SPI_CONFIG(EXAMPLE_PIN_NUM_LCD_CS,
+                                 EXAMPLE_PIN_NUM_LCD_DC,
+#if LCD_LVGL_ASYNC_FLUSH
+                                 example_notify_lvgl_flush_ready,
+                                 &disp_drv);
+#else
+                                 NULL,
+                                 NULL);
+#endif
+#endif
 
   sh8601_vendor_config_t vendor_config = 
   {
@@ -230,7 +301,7 @@ void lcd_lvgl_Init(void)
     .init_cmds_size = sizeof(lcd_init_cmds) / sizeof(lcd_init_cmds[0]),
     .flags = 
     {
-      .use_qspi_interface = 1,
+      .use_qspi_interface = LCD_USE_QSPI,
     },
   };
   ESP_ERROR_CHECK_WITHOUT_ABORT(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)LCD_HOST, &io_config, &io_handle));
@@ -240,9 +311,9 @@ void lcd_lvgl_Init(void)
   {
     .reset_gpio_num = EXAMPLE_PIN_NUM_LCD_RST,
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
-    .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB,
+    .rgb_ele_order = LCD_COLOR_ORDER_BGR ? LCD_RGB_ELEMENT_ORDER_BGR : LCD_RGB_ELEMENT_ORDER_RGB,
 #else
-    .color_space = ESP_LCD_COLOR_SPACE_RGB,
+    .color_space = LCD_COLOR_ORDER_BGR ? ESP_LCD_COLOR_SPACE_BGR : ESP_LCD_COLOR_SPACE_RGB,
 #endif
     .bits_per_pixel = LCD_BIT_PER_PIXEL,
     .vendor_config = &vendor_config,
@@ -250,7 +321,8 @@ void lcd_lvgl_Init(void)
   ESP_ERROR_CHECK_WITHOUT_ABORT(esp_lcd_new_panel_sh8601(io_handle, &panel_config, &panel_handle));
   ESP_ERROR_CHECK_WITHOUT_ABORT(esp_lcd_panel_reset(panel_handle));
   ESP_ERROR_CHECK_WITHOUT_ABORT(esp_lcd_panel_init(panel_handle));
-  //ESP_ERROR_CHECK_WITHOUT_ABORT(esp_lcd_panel_disp_on_off(panel_handle, true));
+  ESP_ERROR_CHECK_WITHOUT_ABORT(esp_lcd_panel_disp_on_off(panel_handle, true));
+  panel_known_good_render_test(panel_handle);
 
   lv_init();
   lv_color_t *buf1 = heap_caps_malloc(EXAMPLE_LCD_H_RES * EXAMPLE_LVGL_BUF_HEIGHT * sizeof(lv_color_t), MALLOC_CAP_DMA);
@@ -288,7 +360,9 @@ void lcd_lvgl_Init(void)
   xTaskCreate(example_lvgl_port_task, "LVGL", EXAMPLE_LVGL_TASK_STACK_SIZE, NULL, EXAMPLE_LVGL_TASK_PRIORITY, NULL);
   if (example_lvgl_lock(-1)) 
   {   
+#if LCD_START_LV_DEMO_WIDGETS
     lv_demo_widgets();      /* A widgets example */
+#endif
     //lv_demo_music();        /* A modern, smartphone-like music player demo. */
     //lv_demo_stress();       /* A stress test for LVGL. */
     //lv_demo_benchmark();    /* A demo to measure the performance of LVGL or to compare different settings. */
@@ -339,8 +413,14 @@ static void example_increase_lvgl_tick(void *arg)
 }
 static bool example_notify_lvgl_flush_ready(esp_lcd_panel_io_handle_t panel_io, esp_lcd_panel_io_event_data_t *edata, void *user_ctx)
 {
+  (void)panel_io;
+  (void)edata;
+#if LCD_LVGL_ASYNC_FLUSH
   lv_disp_drv_t *disp_driver = (lv_disp_drv_t *)user_ctx;
   lv_disp_flush_ready(disp_driver);
+#else
+  (void)user_ctx;
+#endif
   return false;
 }
 static void example_lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_color_t *color_map)
@@ -352,7 +432,11 @@ static void example_lvgl_flush_cb(lv_disp_drv_t *drv, const lv_area_t *area, lv_
   const int offsety2 = area->y2;
 
   esp_lcd_panel_draw_bitmap(panel_handle, offsetx1, offsety1, offsetx2 + 1, offsety2 + 1, color_map);
+#if !LCD_LVGL_ASYNC_FLUSH
   lv_disp_flush_ready(drv);
+#else
+  (void)drv;
+#endif
 }
 void example_lvgl_rounder_cb(struct _lv_disp_drv_t *disp_drv, lv_area_t *area)
 {

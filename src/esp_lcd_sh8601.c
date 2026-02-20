@@ -18,6 +18,7 @@
 #include "esp_log.h"
 
 #include "esp_lcd_sh8601.h"
+#include "lcd_config.h"
 
 #if __has_include("esp_idf_version.h")
 #include "esp_idf_version.h"
@@ -171,9 +172,13 @@ err:
 static esp_err_t tx_param(sh8601_panel_t *sh8601, esp_lcd_panel_io_handle_t io, int lcd_cmd, const void *param, size_t param_size)
 {
     if (sh8601->flags.use_qspi_interface) {
+#if LCD_QSPI_CMD_PACKING_ALT
+        lcd_cmd = ((LCD_OPCODE_WRITE_CMD & 0xFF) << 8) | (lcd_cmd & 0xFF);
+#else
         lcd_cmd &= 0xff;
         lcd_cmd <<= 8;
         lcd_cmd |= LCD_OPCODE_WRITE_CMD << 24;
+#endif
     }
     return esp_lcd_panel_io_tx_param(io, lcd_cmd, param, param_size);
 }
@@ -181,9 +186,13 @@ static esp_err_t tx_param(sh8601_panel_t *sh8601, esp_lcd_panel_io_handle_t io, 
 static esp_err_t tx_color(sh8601_panel_t *sh8601, esp_lcd_panel_io_handle_t io, int lcd_cmd, const void *param, size_t param_size)
 {
     if (sh8601->flags.use_qspi_interface) {
+#if LCD_QSPI_CMD_PACKING_ALT
+        lcd_cmd = ((LCD_OPCODE_WRITE_COLOR & 0xFF) << 8) | (lcd_cmd & 0xFF);
+#else
         lcd_cmd &= 0xff;
         lcd_cmd <<= 8;
         lcd_cmd |= LCD_OPCODE_WRITE_COLOR << 24;
+#endif
     }
     return esp_lcd_panel_io_tx_color(io, lcd_cmd, param, param_size);
 }

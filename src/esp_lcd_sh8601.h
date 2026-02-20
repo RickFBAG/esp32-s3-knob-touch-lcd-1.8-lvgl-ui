@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include "esp_lcd_panel_vendor.h"
+#include "lcd_config.h"
 
 #if __has_include("esp_idf_version.h")
 #include "esp_idf_version.h"
@@ -20,6 +21,16 @@
 
 #ifndef ESP_IDF_VERSION
 #define ESP_IDF_VERSION ESP_IDF_VERSION_VAL(4, 4, 0)
+#endif
+
+#ifndef LCD_QSPI_PCLK_10MHZ
+#define LCD_QSPI_PCLK_10MHZ 0
+#endif
+
+#if LCD_QSPI_PCLK_10MHZ
+#define SH8601_PANEL_PCLK_HZ (10 * 1000 * 1000)
+#else
+#define SH8601_PANEL_PCLK_HZ (20 * 1000 * 1000)
 #endif
 
 #ifdef __cplusplus
@@ -99,7 +110,7 @@ esp_err_t esp_lcd_new_panel_sh8601(const esp_lcd_panel_io_handle_t io, const esp
         .cs_gpio_num = cs,                                      \
         .dc_gpio_num = dc,                                      \
         .spi_mode = 0,                                          \
-        .pclk_hz = 20 * 1000 * 1000,                            \
+        .pclk_hz = SH8601_PANEL_PCLK_HZ,                        \
         .trans_queue_depth = 10,                                \
         .on_color_trans_done = cb,                              \
         .user_ctx = cb_ctx,                                     \
@@ -112,7 +123,7 @@ esp_err_t esp_lcd_new_panel_sh8601(const esp_lcd_panel_io_handle_t io, const esp
         .cs_gpio_num = cs,                                      \
         .dc_gpio_num = -1,                                      \
         .spi_mode = 0,                                          \
-        .pclk_hz = 20 * 1000 * 1000,                            \
+        .pclk_hz = SH8601_PANEL_PCLK_HZ,                        \
         .trans_queue_depth = 10,                                \
         .on_color_trans_done = cb,                              \
         .user_ctx = cb_ctx,                                     \
@@ -128,7 +139,7 @@ esp_err_t esp_lcd_new_panel_sh8601(const esp_lcd_panel_io_handle_t io, const esp
         .cs_gpio_num = cs,                                      \
         .dc_gpio_num = -1,                                      \
         .spi_mode = 0,                                          \
-        .pclk_hz = 40 * 1000 * 1000,                            \
+        .pclk_hz = SH8601_PANEL_PCLK_HZ,                        \
         .trans_queue_depth = 10,                                \
         .on_color_trans_done = cb,                              \
         .user_ctx = cb_ctx,                                     \
