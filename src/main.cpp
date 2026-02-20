@@ -5,7 +5,20 @@
 void setup()
 {
   Serial.begin(115200);
-  delay(300);
+  Serial.setDebugOutput(true);
+
+  // Give USB CDC enough time and emit repeated markers so monitor can catch them.
+  uint32_t start_ms = millis();
+  while (!Serial && (millis() - start_ms) < 8000) {
+    delay(10);
+  }
+
+  for (int i = 0; i < 20; i++) {
+    Serial.printf("[DBG] boot banner %d/20, millis=%lu\r\n", i + 1, (unsigned long)millis());
+    Serial.flush();
+    delay(200);
+  }
+
   Serial.println("[DBG] setup: start");
   Touch_Init();
   Serial.println("[DBG] setup: touch init done");
@@ -16,6 +29,11 @@ void setup()
 }
 void loop()
 {
+  static uint32_t last_heartbeat = 0;
+  if (millis() - last_heartbeat > 1000) {
+    last_heartbeat = millis();
+    Serial.printf("[DBG] heartbeat millis=%lu\r\n", (unsigned long)last_heartbeat);
+  }
 #ifdef Backlight_Testing
   setUpdutySubdivide(LCD_PWM_MODE_255);
   delay(1000);
