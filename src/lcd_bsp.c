@@ -214,21 +214,24 @@ static const sh8601_lcd_init_cmd_t lcd_init_cmds[] =
 
 static void panel_fill_solid_color(esp_lcd_panel_handle_t panel_handle, uint16_t color565)
 {
-  static uint16_t *frame_buf = NULL;
-  static size_t frame_pixels = EXAMPLE_LCD_H_RES * EXAMPLE_LCD_V_RES;
-  if (frame_buf == NULL) {
-    frame_buf = heap_caps_malloc(frame_pixels * sizeof(uint16_t), MALLOC_CAP_DMA);
-    if (!frame_buf) {
-      ESP_LOGE(TAG, "Failed to allocate panel test frame buffer");
+  static uint16_t *line_buf = NULL;
+  if (line_buf == NULL) {
+    line_buf = heap_caps_malloc(EXAMPLE_LCD_H_RES * sizeof(uint16_t), MALLOC_CAP_DMA);
+    if (!line_buf) {
+      ESP_LOGE(TAG, "Failed to allocate panel test line buffer");
       return;
     }
   }
 
-  for (size_t i = 0; i < frame_pixels; i++) {
-    frame_buf[i] = color565;
+  for (int x = 0; x < EXAMPLE_LCD_H_RES; x++) {
+    line_buf[x] = color565;
   }
 
-  esp_lcd_panel_draw_bitmap(panel_handle, 0, 0, EXAMPLE_LCD_H_RES, EXAMPLE_LCD_V_RES, frame_buf);
+  for (int y = 0; y < EXAMPLE_LCD_V_RES; y++) {
+    esp_lcd_panel_draw_bitmap(panel_handle, 0, y, EXAMPLE_LCD_H_RES, y + 1, line_buf);
+    // tx_param blocks until pending tx_color queue is drained; keeps line_buf reuse safe.
+    esp_lcd_panel_io_tx_param(amoled_panel_io_handle, LCD_CMD_NOP, NULL, 0);
+  }
 }
 
 static void panel_known_good_render_test(esp_lcd_panel_handle_t panel_handle)
@@ -348,9 +351,14 @@ void lcd_lvgl_Init(void)
 
   lv_init();
   lv_color_t *buf1 = heap_caps_malloc(EXAMPLE_LCD_H_RES * EXAMPLE_LVGL_BUF_HEIGHT * sizeof(lv_color_t), MALLOC_CAP_DMA);
-  assert(buf1);
+  if (!buf1) {
+    ESP_LOGE(TAG, "Failed to allocate LVGL buf1");
+    return;
+  }
   lv_color_t *buf2 = heap_caps_malloc(EXAMPLE_LCD_H_RES * EXAMPLE_LVGL_BUF_HEIGHT * sizeof(lv_color_t), MALLOC_CAP_DMA);
-  assert(buf2);
+  if (!buf2) {
+    ESP_LOGW(TAG, "LVGL buf2 allocation failed, falling back to single buffer");
+  }
   lv_disp_draw_buf_init(&disp_buf, buf1, buf2, EXAMPLE_LCD_H_RES * EXAMPLE_LVGL_BUF_HEIGHT);
   lv_disp_drv_init(&disp_drv);
   disp_drv.hor_res = EXAMPLE_LCD_H_RES;
