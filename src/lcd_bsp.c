@@ -2,6 +2,7 @@
 #include "esp_lcd_sh8601.h"
 #include "lcd_config.h"
 #include "cst816.h"
+#include "esp_idf_version.h"
 static SemaphoreHandle_t lvgl_mux = NULL; //mutex semaphores
 #define LCD_HOST    SPI2_HOST
 
@@ -238,7 +239,11 @@ void lcd_lvgl_Init(void)
   const esp_lcd_panel_dev_config_t panel_config = 
   {
     .reset_gpio_num = EXAMPLE_PIN_NUM_LCD_RST,
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
     .rgb_ele_order = LCD_RGB_ELEMENT_ORDER_RGB,
+#else
+    .color_space = ESP_LCD_COLOR_SPACE_RGB,
+#endif
     .bits_per_pixel = LCD_BIT_PER_PIXEL,
     .vendor_config = &vendor_config,
   };
