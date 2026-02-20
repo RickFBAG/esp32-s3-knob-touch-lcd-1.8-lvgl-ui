@@ -264,12 +264,13 @@ void lcd_lvgl_Init(void)
 
   s_lvgl_flush_ready_enabled = false;
   DBG_PRINTF("[DBG] lcd_lvgl_Init: enter\r\n");
-  ESP_LOGI(TAG, "LCD config: mode=%s color_order=%s pclk=%dMHz flush=%s qspi_cmd=%s",
+  ESP_LOGI(TAG, "LCD config: mode=%s color_order=%s pclk=%dMHz flush=%s qspi_cmd=%s init=%s",
            LCD_USE_QSPI ? "QSPI" : "SPI",
            LCD_COLOR_ORDER_BGR ? "BGR" : "RGB",
            LCD_QSPI_PCLK_10MHZ ? 10 : 20,
            LCD_LVGL_ASYNC_FLUSH ? "ASYNC_CB" : "SYNC",
-           LCD_QSPI_CMD_PACKING_ALT ? "ALT" : "DEFAULT");
+           LCD_QSPI_CMD_PACKING_ALT ? "ALT" : "DEFAULT",
+           LCD_USE_CUSTOM_INIT_CMDS ? "CUSTOM" : "DRIVER_DEFAULT");
 
   const spi_bus_config_t buscfg =
 #if LCD_USE_QSPI
@@ -312,8 +313,8 @@ void lcd_lvgl_Init(void)
 
   sh8601_vendor_config_t vendor_config = 
   {
-    .init_cmds = lcd_init_cmds,
-    .init_cmds_size = sizeof(lcd_init_cmds) / sizeof(lcd_init_cmds[0]),
+    .init_cmds = LCD_USE_CUSTOM_INIT_CMDS ? lcd_init_cmds : NULL,
+    .init_cmds_size = LCD_USE_CUSTOM_INIT_CMDS ? (sizeof(lcd_init_cmds) / sizeof(lcd_init_cmds[0])) : 0,
     .flags = 
     {
       .use_qspi_interface = LCD_USE_QSPI,
