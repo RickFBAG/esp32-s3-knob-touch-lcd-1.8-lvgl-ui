@@ -5,9 +5,11 @@
 #include "esp_idf_version.h"
 #include "esp_heap_caps.h"
 #include "esp_log.h"
+#include <stdio.h>
 static SemaphoreHandle_t lvgl_mux = NULL; //mutex semaphores
 #define LCD_HOST    SPI2_HOST
 static const char *TAG = "lcd_bsp";
+#define DBG_PRINTF(...) do { printf(__VA_ARGS__); fflush(stdout); } while (0)
 
 #define SH8601_ID 0x86
 #define CO5300_ID 0xff
@@ -231,15 +233,18 @@ static void panel_fill_solid_color(esp_lcd_panel_handle_t panel_handle, uint16_t
 static void panel_known_good_render_test(esp_lcd_panel_handle_t panel_handle)
 {
 #if LCD_RUN_PANEL_SOLID_COLOR_TEST
+  DBG_PRINTF("[DBG] panel: solid color test start\r\n");
   static const uint16_t colors[] = {0xF800, 0x07E0, 0x001F, 0xFFFF, 0x0000};
   static const char *names[] = {"RED", "GREEN", "BLUE", "WHITE", "BLACK"};
   const int count = sizeof(colors) / sizeof(colors[0]);
 
   for (int i = 0; i < count; i++) {
     ESP_LOGI(TAG, "Panel solid test color: %s", names[i]);
+    DBG_PRINTF("[DBG] panel: fill %s\r\n", names[i]);
     panel_fill_solid_color(panel_handle, colors[i]);
     vTaskDelay(pdMS_TO_TICKS(250));
   }
+  DBG_PRINTF("[DBG] panel: solid color test done\r\n");
 #else
   (void)panel_handle;
 #endif
@@ -250,6 +255,7 @@ void lcd_lvgl_Init(void)
   static lv_disp_draw_buf_t disp_buf; // contains internal graphic buffer(s) called draw buffer(s)
   static lv_disp_drv_t disp_drv;      // contains callback functions
 
+  DBG_PRINTF("[DBG] lcd_lvgl_Init: enter\r\n");
   ESP_LOGI(TAG, "LCD config: mode=%s color_order=%s pclk=%dMHz flush=%s qspi_cmd=%s",
            LCD_USE_QSPI ? "QSPI" : "SPI",
            LCD_COLOR_ORDER_BGR ? "BGR" : "RGB",
@@ -271,6 +277,7 @@ void lcd_lvgl_Init(void)
                                   EXAMPLE_LCD_H_RES * EXAMPLE_LCD_V_RES * LCD_BIT_PER_PIXEL / 8);
 #endif
   ESP_ERROR_CHECK_WITHOUT_ABORT(spi_bus_initialize(LCD_HOST, &buscfg, SPI_DMA_CH_AUTO));
+  DBG_PRINTF("[DBG] lcd_lvgl_Init: spi_bus_initialize done\r\n");
   esp_lcd_panel_io_handle_t io_handle = NULL;
 
   const esp_lcd_panel_io_spi_config_t io_config =
@@ -305,6 +312,7 @@ void lcd_lvgl_Init(void)
     },
   };
   ESP_ERROR_CHECK_WITHOUT_ABORT(esp_lcd_new_panel_io_spi((esp_lcd_spi_bus_handle_t)LCD_HOST, &io_config, &io_handle));
+  DBG_PRINTF("[DBG] lcd_lvgl_Init: panel_io created\r\n");
   amoled_panel_io_handle = io_handle;
   esp_lcd_panel_handle_t panel_handle = NULL;
   const esp_lcd_panel_dev_config_t panel_config = 
@@ -319,10 +327,15 @@ void lcd_lvgl_Init(void)
     .vendor_config = &vendor_config,
   };
   ESP_ERROR_CHECK_WITHOUT_ABORT(esp_lcd_new_panel_sh8601(io_handle, &panel_config, &panel_handle));
+  DBG_PRINTF("[DBG] lcd_lvgl_Init: sh8601 panel created\r\n");
   ESP_ERROR_CHECK_WITHOUT_ABORT(esp_lcd_panel_reset(panel_handle));
+  DBG_PRINTF("[DBG] lcd_lvgl_Init: panel reset done\r\n");
   ESP_ERROR_CHECK_WITHOUT_ABORT(esp_lcd_panel_init(panel_handle));
+  DBG_PRINTF("[DBG] lcd_lvgl_Init: panel init done\r\n");
   ESP_ERROR_CHECK_WITHOUT_ABORT(esp_lcd_panel_disp_on_off(panel_handle, true));
+  DBG_PRINTF("[DBG] lcd_lvgl_Init: panel display ON\r\n");
   panel_known_good_render_test(panel_handle);
+  DBG_PRINTF("[DBG] lcd_lvgl_Init: panel color test returned\r\n");
 
   lv_init();
   lv_color_t *buf1 = heap_caps_malloc(EXAMPLE_LCD_H_RES * EXAMPLE_LVGL_BUF_HEIGHT * sizeof(lv_color_t), MALLOC_CAP_DMA);
@@ -338,6 +351,7 @@ void lcd_lvgl_Init(void)
   disp_drv.draw_buf = &disp_buf;
   disp_drv.user_data = panel_handle;
   lv_disp_t *disp = lv_disp_drv_register(&disp_drv);
+  DBG_PRINTF("[DBG] lcd_lvgl_Init: lvgl display driver registered\r\n");
 
   static lv_indev_drv_t indev_drv;    // Input device driver (Touch)
   lv_indev_drv_init(&indev_drv);
@@ -345,6 +359,7 @@ void lcd_lvgl_Init(void)
   indev_drv.disp = disp;
   indev_drv.read_cb = example_lvgl_touch_cb;
   lv_indev_drv_register(&indev_drv);
+  DBG_PRINTF("[DBG] lcd_lvgl_Init: touch indev registered\r\n");
 
   const esp_timer_create_args_t lvgl_tick_timer_args = 
   {
@@ -354,14 +369,18 @@ void lcd_lvgl_Init(void)
   esp_timer_handle_t lvgl_tick_timer = NULL;
   ESP_ERROR_CHECK(esp_timer_create(&lvgl_tick_timer_args, &lvgl_tick_timer));
   ESP_ERROR_CHECK(esp_timer_start_periodic(lvgl_tick_timer, EXAMPLE_LVGL_TICK_PERIOD_MS * 1000));
+  DBG_PRINTF("[DBG] lcd_lvgl_Init: tick timer started\r\n");
 
   lvgl_mux = xSemaphoreCreateMutex(); //mutex semaphores
   assert(lvgl_mux);
   xTaskCreate(example_lvgl_port_task, "LVGL", EXAMPLE_LVGL_TASK_STACK_SIZE, NULL, EXAMPLE_LVGL_TASK_PRIORITY, NULL);
+  DBG_PRINTF("[DBG] lcd_lvgl_Init: lvgl task created\r\n");
   if (example_lvgl_lock(-1)) 
   {   
 #if LCD_START_LV_DEMO_WIDGETS
+    DBG_PRINTF("[DBG] lcd_lvgl_Init: starting lv_demo_widgets\r\n");
     lv_demo_widgets();      /* A widgets example */
+    DBG_PRINTF("[DBG] lcd_lvgl_Init: lv_demo_widgets started\r\n");
 #endif
     //lv_demo_music();        /* A modern, smartphone-like music player demo. */
     //lv_demo_stress();       /* A stress test for LVGL. */
@@ -370,6 +389,7 @@ void lcd_lvgl_Init(void)
     // Release the mutex
     example_lvgl_unlock();
   }
+  DBG_PRINTF("[DBG] lcd_lvgl_Init: exit\r\n");
 }
 
 static bool example_lvgl_lock(int timeout_ms)
