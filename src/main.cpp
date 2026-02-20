@@ -22,10 +22,10 @@ void setup()
   Serial.println("[DBG] setup: start");
   Touch_Init();
   Serial.println("[DBG] setup: touch init done");
-  lcd_lvgl_Init();
-  Serial.println("[DBG] setup: lcd_lvgl_Init returned");
   lcd_bl_pwm_bsp_init(LCD_PWM_MODE_255);
   Serial.println("[DBG] setup: backlight init done");
+  lcd_lvgl_Init();
+  Serial.println("[DBG] setup: lcd_lvgl_Init returned");
 }
 void loop()
 {
