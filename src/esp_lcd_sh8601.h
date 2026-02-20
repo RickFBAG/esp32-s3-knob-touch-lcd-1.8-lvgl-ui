@@ -115,6 +115,20 @@ esp_err_t esp_lcd_new_panel_sh8601(const esp_lcd_panel_io_handle_t io, const esp
  * @brief LCD panel IO configuration structure
  *
  */
+#if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
+#define SH8601_PANEL_IO_SPI_CONFIG(cs, dc, cb, cb_ctx)          \
+    {                                                           \
+        .cs_gpio_num = cs,                                      \
+        .dc_gpio_num = dc,                                      \
+        .spi_mode = 0,                                          \
+        .pclk_hz = SH8601_PANEL_PCLK_HZ,                        \
+        .trans_queue_depth = 10,                                \
+        .on_color_trans_done = cb,                              \
+        .user_ctx = cb_ctx,                                     \
+        .lcd_cmd_bits = 8,                                      \
+        .lcd_param_bits = 8,                                    \
+    }
+#else
 #define SH8601_PANEL_IO_SPI_CONFIG(cs, dc, cb, cb_ctx)          \
     {                                                           \
         .cs_gpio_num = cs,                                      \
@@ -130,6 +144,7 @@ esp_err_t esp_lcd_new_panel_sh8601(const esp_lcd_panel_io_handle_t io, const esp
             .dc_as_cmd_phase = LCD_DC_AS_CMD_PHASE,             \
         },                                                      \
     }
+#endif
 #if ESP_IDF_VERSION >= ESP_IDF_VERSION_VAL(5, 3, 0)
 #define SH8601_PANEL_IO_QSPI_CONFIG(cs, cb, cb_ctx)             \
     {                                                           \
@@ -143,7 +158,6 @@ esp_err_t esp_lcd_new_panel_sh8601(const esp_lcd_panel_io_handle_t io, const esp
         .lcd_cmd_bits = LCD_QSPI_CMD_BITS_8 ? 8 : 32,           \
         .lcd_param_bits = 8,                                    \
         .flags = {                                              \
-            .dc_as_cmd_phase = LCD_DC_AS_CMD_PHASE,             \
             .quad_mode = !LCD_QSPI_OCTAL_MODE,                  \
         },                                                      \
     }
